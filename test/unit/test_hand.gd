@@ -68,13 +68,15 @@ func test_returns_no_decomposition_for_empty_hand() -> void:
 
 
 func test_returns_every_decomposition_of_ambiguous_hand() -> void:
-	# 123 123 123 444 55, or 111 222 333 444 55.
+	# This shape supports three different pair-5 bodies and one pair-2 body.
 	var result: Array[HandScript.Decomposition] = _decompose("11122233344455")
 	var normals: Array[HandScript.NormalDecomposition] = _normal_decompositions(result)
 
-	assert_eq(normals.size(), 2)
-	assert_eq(_pair_tiles(normals), [5, 5])
+	assert_eq(normals.size(), 4)
+	assert_eq(_pair_tiles(normals), [2, 5, 5, 5])
+	assert_has(_normal_signatures(normals), "2|2,3,3|1|")
 	assert_has(_normal_signatures(normals), "5|1,1,1|4|")
+	assert_has(_normal_signatures(normals), "5|2,2,2|1|")
 	assert_has(_normal_signatures(normals), "5||1,2,3,4|")
 
 
