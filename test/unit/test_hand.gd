@@ -101,6 +101,24 @@ func test_declared_quad_counts_as_one_of_four_melds() -> void:
 	assert_eq(_quad_tiles(normal), [9])
 
 
+func test_rejects_declared_quad_with_concealed_copies_of_the_same_tile() -> void:
+	var result: Array[HandScript.Decomposition] = _decompose(
+		"11123445677",
+		PackedInt32Array([1]),
+	)
+
+	assert_true(result.is_empty())
+
+
+func test_rejects_duplicate_declared_quad_values() -> void:
+	var result: Array[HandScript.Decomposition] = _decompose(
+		"11123455",
+		PackedInt32Array([9, 9]),
+	)
+
+	assert_true(result.is_empty())
+
+
 func test_seven_consecutive_pairs_include_all_normal_interpretations() -> void:
 	var result: Array[HandScript.Decomposition] = _decompose("11223344556677")
 	var normals: Array[HandScript.NormalDecomposition] = _normal_decompositions(result)
