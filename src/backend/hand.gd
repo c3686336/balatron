@@ -266,6 +266,13 @@ static func _is_valid_input(
 		if tile < 1 or tile > 9:
 			return false
 
+	for tile: int in range(1, 10):
+		if tile_counts[tile - 1] > 0 and tile in declared_quads:
+			return false
+
+		if declared_quads.count(tile) > 1:
+			return false
+
 	return tile_total == 14 - declared_quads.size() * 3
 
 ## Returns every distinct decomposition of a complete concealed hand.
