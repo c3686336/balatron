@@ -5,8 +5,11 @@ on:
   pull_request:
 
 jobs:
-  gut:
+  coverage:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GDCOV_VERSION: 4.7-stable
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -21,5 +24,54 @@ jobs:
       - name: Import project
         run: godot --headless --import
 
-      - name: Run GUT tests
-        run: godot --headless -s addons/gut/gut_cmdln.gd -gexit
+      - name: Download coverage runner
+        run: |
+          asset="gdcov-${GDCOV_VERSION}-linux-x86_64.zip"
+          base="https://github.com/godot-gdunit-labs/gdUnit4-coverage/releases/download/gdcov-${GDCOV_VERSION}"
+          mkdir -p gdcov-download bin
+          curl -fsSL -o "gdcov-download/${asset}" "${base}/${asset}"
+          curl -fsSL -o gdcov-download/SHA256SUMS "${base}/SHA256SUMS"
+          (cd gdcov-download && grep "${asset}" SHA256SUMS | sha256sum -c -)
+          unzip -q "gdcov-download/${asset}" -d bin
+          chmod +x "bin/gdcov-${GDCOV_VERSION}"
+
+      - name: Run GDUnit4 tests with coverage
+        run: |
+          xvfb-run --auto-servernum "./bin/gdcov-${GDCOV_VERSION}" --path . \
+            --rendering-driver opengl3 --audio-driver Dummy \
+            -s -d --ignore-error-breaks \
+            res://addons/gdUnit4/bin/GdUnitCmdTool.gd \
+            -a res://test/unit -c
+
+      - name: Upload GDUnit test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gdunit-test-reports
+          path: reports
+          if-no-files-found: warn
+
+      - name: Verify coverage tracefile
+        run: test -s coverage/coverage.lcov
+
+      - name: Upload coverage tracefile
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-lcov
+          path: coverage/coverage.lcov
+
+      - name: Generate coverage summary
+        uses: danielpalme/ReportGenerator-GitHub-Action@5.3.11
+        with:
+          reports: coverage/coverage.lcov
+          targetdir: coverage-report
+          reporttypes: Html;MarkdownSummaryGithub
+
+      - name: Add coverage to job summary
+        run: cat coverage-report/SummaryGithub.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage-report

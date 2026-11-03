@@ -143,9 +143,9 @@ class UpdateResult extends RefCounted:
 		events = p_events
 
 
-static func new_game(seed: int) -> State:
+static func new_game(seed_value: int) -> State:
 	var rng := RandomNumberGenerator.new()
-	rng.seed = seed
+	rng.seed = seed_value
 	var bonus_tile := rng.randi_range(1, 9)
 	var wall := Deck.full_deck()
 	Util.shuffle_with_rng(wall.tiles, rng)

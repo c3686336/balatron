@@ -1,4 +1,4 @@
-extends GutTest
+extends BalatronTestSuite
 
 const ActionScript := preload("res://src/backend/action.gd")
 const GameScript := preload("res://src/backend/game.gd")
