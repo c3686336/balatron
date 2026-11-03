@@ -95,6 +95,31 @@ func test_discard_is_rejected_for_an_index_outside_the_hand() -> void:
 	assert_true(result.events[0] is GameScript.ActionRejected)
 
 
+func test_discard_is_rejected_for_a_negative_index() -> void:
+	var state := _state("1234567891234", 5, "89", 1)
+
+	var result: GameScript.UpdateResult = GameScript.update(
+		state,
+		ActionScript.Discard.new(-1),
+	)
+
+	assert_eq(result.state.concealed_hand.values(), state.concealed_hand.values())
+	assert_eq(result.state.draw_pile.values(), state.draw_pile.values())
+	assert_true(result.events[0] is GameScript.ActionRejected)
+
+
+func test_unknown_action_is_rejected() -> void:
+	var state := _state("1234567891234", 5, "89", 1)
+
+	var result: GameScript.UpdateResult = GameScript.update(
+		state,
+		ActionScript.PlayerAction.new(),
+	)
+
+	assert_eq(result.state.phase, GameScript.Phase.PLAYING)
+	assert_true(result.events[0] is GameScript.ActionRejected)
+
+
 func test_final_draw_can_still_be_declared_as_tsumo() -> void:
 	var state := _state("1112344567899", 1, "9", 1)
 	var draw_result: GameScript.UpdateResult = GameScript.update(
@@ -137,6 +162,21 @@ func test_returned_state_does_not_share_mutable_tiles_with_input() -> void:
 	assert_eq(state.concealed_hand.tiles[0].value, 1)
 
 
+func test_all_tiles_are_conserved_through_every_draw() -> void:
+	var state: GameScript.State = GameScript.new_game(9876)
+
+	for _draw: int in range(22):
+		var result: GameScript.UpdateResult = GameScript.update(
+			state,
+			ActionScript.Discard.new(13),
+		)
+		state = result.state
+
+	assert_true(state.draw_pile.is_empty())
+	assert_eq(state.discards.size(), 22)
+	assert_eq(_tile_inventory(state), PackedInt32Array([4, 4, 4, 4, 4, 4, 4, 4, 4]))
+
+
 func test_valid_tsumo_scores_exact_bonus_rank_as_exponential_han() -> void:
 	var state := _state("1112344567899", 9, "123", 1)
 
@@ -150,9 +190,64 @@ func test_valid_tsumo_scores_exact_bonus_rank_as_exponential_han() -> void:
 	assert_eq(result.state.score, 8)
 	assert_eq(result.events.size(), 1)
 	assert_true(result.events[0] is GameScript.TsumoDeclared)
+	var event := result.events[0] as GameScript.TsumoDeclared
+	assert_eq(event.han, 3)
+	assert_eq(event.score, 8)
+	assert_false(event.decompositions.is_empty())
 	assert_eq(state.phase, GameScript.Phase.PLAYING, "The input state remains unchanged")
 	assert_eq(state.han, 0)
 	assert_eq(state.score, 0)
+
+
+func test_tsumo_score_handles_zero_and_four_bonus_tiles() -> void:
+	var zero_bonus := _state("1112223334445", 5, "123", 9)
+	var four_bonus := _state("1111234567899", 9, "123", 1)
+
+	var zero_result: GameScript.UpdateResult = GameScript.update(
+		zero_bonus,
+		ActionScript.DeclareTsumo.new(),
+	)
+	var four_result: GameScript.UpdateResult = GameScript.update(
+		four_bonus,
+		ActionScript.DeclareTsumo.new(),
+	)
+
+	assert_eq(zero_result.state.han, 0)
+	assert_eq(zero_result.state.score, 1)
+	assert_eq(four_result.state.han, 4)
+	assert_eq(four_result.state.score, 16)
+
+
+func test_seven_pairs_can_be_declared_as_tsumo() -> void:
+	var state := _state("1122445577889", 9, "123", 3)
+
+	var result: GameScript.UpdateResult = GameScript.update(
+		state,
+		ActionScript.DeclareTsumo.new(),
+	)
+
+	assert_eq(result.state.phase, GameScript.Phase.WON)
+	var event := result.events[0] as GameScript.TsumoDeclared
+	assert_eq(event.decompositions.size(), 1)
+	assert_true(event.decompositions[0] is Hand.SevenPairsDecomposition)
+
+
+func test_actions_after_tsumo_are_rejected_without_losing_win_result() -> void:
+	var state := _state("1112344567899", 9, "123", 1)
+	var won: GameScript.UpdateResult = GameScript.update(
+		state,
+		ActionScript.DeclareTsumo.new(),
+	)
+
+	var rejected: GameScript.UpdateResult = GameScript.update(
+		won.state,
+		ActionScript.Discard.new(13),
+	)
+
+	assert_eq(rejected.state.phase, GameScript.Phase.WON)
+	assert_eq(rejected.state.han, won.state.han)
+	assert_eq(rejected.state.score, won.state.score)
+	assert_true(rejected.events[0] is GameScript.ActionRejected)
 
 
 func test_invalid_tsumo_is_rejected_without_changing_state() -> void:
@@ -190,3 +285,14 @@ func _deck(values: String) -> Deck:
 	for character: String in values:
 		tiles.append(Tile.new(character.to_int()))
 	return Deck.new(tiles)
+
+
+func _tile_inventory(state: GameScript.State) -> PackedInt32Array:
+	var counts := PackedInt32Array()
+	counts.resize(9)
+	var decks: Array[Deck] = [state.concealed_hand, state.draw_pile, state.discards]
+	for deck: Deck in decks:
+		for tile: Tile in deck.tiles:
+			counts[tile.value - 1] += 1
+	counts[state.drawn_tile.value - 1] += 1
+	return counts
