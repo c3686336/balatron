@@ -89,10 +89,44 @@ class TsumoDeclared extends Event:
 		score = p_score
 
 
-class ActionRejected extends Event:
-	var reason: String
+class Rejection extends RefCounted:
+	pass
 
-	func _init(p_reason: String) -> void:
+
+class GameEndedRejection extends Rejection:
+	var phase: Phase
+
+	func _init(p_phase: Phase) -> void:
+		phase = p_phase
+
+
+class UnknownActionRejection extends Rejection:
+	pass
+
+
+class EmptyDrawPileRejection extends Rejection:
+	pass
+
+
+class InvalidDiscardIndexRejection extends Rejection:
+	var index: int
+	var minimum: int
+	var maximum: int
+
+	func _init(p_index: int, p_minimum: int, p_maximum: int) -> void:
+		index = p_index
+		minimum = p_minimum
+		maximum = p_maximum
+
+
+class IncompleteHandRejection extends Rejection:
+	pass
+
+
+class ActionRejected extends Event:
+	var reason: Rejection
+
+	func _init(p_reason: Rejection) -> void:
 		reason = p_reason
 
 
@@ -136,22 +170,22 @@ static func new_game(seed: int) -> State:
 ## nested value objects as immutable after passing them to this function.
 static func update(state: State, action: ActionScript.PlayerAction) -> UpdateResult:
 	if state.phase != Phase.PLAYING:
-		return _rejected(state, "The game has already ended")
+		return _rejected(state, GameEndedRejection.new(state.phase))
 
 	if action is ActionScript.Discard:
 		return _discard(state, action as ActionScript.Discard)
 	if action is ActionScript.DeclareTsumo:
 		return _declare_tsumo(state)
-	return _rejected(state, "Unknown action")
+	return _rejected(state, UnknownActionRejection.new())
 
 
 static func _discard(state: State, action: ActionScript.Discard) -> UpdateResult:
 	if state.draw_pile.is_empty():
-		return _rejected(state, "No tiles remain to draw")
+		return _rejected(state, EmptyDrawPileRejection.new())
 
 	var drawn_index := state.concealed_hand.size()
 	if action.index < 0 or action.index > drawn_index:
-		return _rejected(state, "Discard index is outside the hand")
+		return _rejected(state, InvalidDiscardIndexRejection.new(action.index, 0, drawn_index))
 
 	var next_state := state.copy()
 	var discarded: Tile
@@ -178,7 +212,7 @@ static func _declare_tsumo(state: State) -> UpdateResult:
 	var tile_counts := _winning_tile_counts(state)
 	var decompositions := HandScript.decompose(tile_counts)
 	if decompositions.is_empty():
-		return _rejected(state, "The hand is not complete")
+		return _rejected(state, IncompleteHandRejection.new())
 
 	var next_state := state.copy()
 	next_state.phase = Phase.WON
@@ -200,6 +234,6 @@ static func _winning_tile_counts(state: State) -> PackedInt32Array:
 	return counts
 
 
-static func _rejected(state: State, reason: String) -> UpdateResult:
+static func _rejected(state: State, reason: Rejection) -> UpdateResult:
 	var events: Array[Event] = [ActionRejected.new(reason)]
 	return UpdateResult.new(state.copy(), events)

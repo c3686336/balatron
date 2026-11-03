@@ -78,10 +78,32 @@ func _tile_text(tile: Tile, state: GameScript.State) -> String:
 func _print_events(events: Array[GameScript.Event]) -> void:
 	for event: GameScript.Event in events:
 		if event is GameScript.ActionRejected:
-			print("Rejected: %s" % (event as GameScript.ActionRejected).reason)
+			print("Rejected: %s" % rejection_text((event as GameScript.ActionRejected).reason))
 		elif event is GameScript.TileDiscarded:
 			print("Discarded %d" % (event as GameScript.TileDiscarded).tile.value)
 		elif event is GameScript.TileDrawn:
 			print("Drew %d" % (event as GameScript.TileDrawn).tile.value)
 		elif event is GameScript.WallExhausted:
 			print("No drawable tiles remain")
+
+
+static func rejection_text(reason: GameScript.Rejection) -> String:
+	if reason is GameScript.GameEndedRejection:
+		var ended := reason as GameScript.GameEndedRejection
+		if ended.phase == GameScript.Phase.WON:
+			return "The game has already been won"
+		return "The game has already ended"
+	if reason is GameScript.UnknownActionRejection:
+		return "Unknown action"
+	if reason is GameScript.EmptyDrawPileRejection:
+		return "No tiles remain to draw"
+	if reason is GameScript.InvalidDiscardIndexRejection:
+		var invalid := reason as GameScript.InvalidDiscardIndexRejection
+		return "Discard index %d is outside the valid range %d-%d" % [
+			invalid.index,
+			invalid.minimum,
+			invalid.maximum,
+		]
+	if reason is GameScript.IncompleteHandRejection:
+		return "The hand is not complete"
+	return "Action rejected"

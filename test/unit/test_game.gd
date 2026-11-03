@@ -79,6 +79,8 @@ func test_discard_is_rejected_when_no_tile_can_be_drawn() -> void:
 	assert_eq(result.state.draw_pile.values(), state.draw_pile.values())
 	assert_eq(result.events.size(), 1)
 	assert_true(result.events[0] is GameScript.ActionRejected)
+	var rejection := result.events[0] as GameScript.ActionRejected
+	assert_true(rejection.reason is GameScript.EmptyDrawPileRejection)
 
 
 func test_discard_is_rejected_for_an_index_outside_the_hand() -> void:
@@ -93,6 +95,12 @@ func test_discard_is_rejected_for_an_index_outside_the_hand() -> void:
 	assert_eq(result.state.concealed_hand.values(), state.concealed_hand.values())
 	assert_eq(result.events.size(), 1)
 	assert_true(result.events[0] is GameScript.ActionRejected)
+	var rejection := result.events[0] as GameScript.ActionRejected
+	assert_true(rejection.reason is GameScript.InvalidDiscardIndexRejection)
+	var reason := rejection.reason as GameScript.InvalidDiscardIndexRejection
+	assert_eq(reason.index, 14)
+	assert_eq(reason.minimum, 0)
+	assert_eq(reason.maximum, 13)
 
 
 func test_discard_is_rejected_for_a_negative_index() -> void:
@@ -106,6 +114,8 @@ func test_discard_is_rejected_for_a_negative_index() -> void:
 	assert_eq(result.state.concealed_hand.values(), state.concealed_hand.values())
 	assert_eq(result.state.draw_pile.values(), state.draw_pile.values())
 	assert_true(result.events[0] is GameScript.ActionRejected)
+	var rejection := result.events[0] as GameScript.ActionRejected
+	assert_true(rejection.reason is GameScript.InvalidDiscardIndexRejection)
 
 
 func test_unknown_action_is_rejected() -> void:
@@ -118,6 +128,8 @@ func test_unknown_action_is_rejected() -> void:
 
 	assert_eq(result.state.phase, GameScript.Phase.PLAYING)
 	assert_true(result.events[0] is GameScript.ActionRejected)
+	var rejection := result.events[0] as GameScript.ActionRejected
+	assert_true(rejection.reason is GameScript.UnknownActionRejection)
 
 
 func test_final_draw_can_still_be_declared_as_tsumo() -> void:
@@ -248,6 +260,9 @@ func test_actions_after_tsumo_are_rejected_without_losing_win_result() -> void:
 	assert_eq(rejected.state.han, won.state.han)
 	assert_eq(rejected.state.score, won.state.score)
 	assert_true(rejected.events[0] is GameScript.ActionRejected)
+	var rejection := rejected.events[0] as GameScript.ActionRejected
+	assert_true(rejection.reason is GameScript.GameEndedRejection)
+	assert_eq((rejection.reason as GameScript.GameEndedRejection).phase, GameScript.Phase.WON)
 
 
 func test_invalid_tsumo_is_rejected_without_changing_state() -> void:
@@ -262,6 +277,8 @@ func test_invalid_tsumo_is_rejected_without_changing_state() -> void:
 	assert_eq(result.state.concealed_hand.values(), state.concealed_hand.values())
 	assert_eq(result.events.size(), 1)
 	assert_true(result.events[0] is GameScript.ActionRejected)
+	var rejection := result.events[0] as GameScript.ActionRejected
+	assert_true(rejection.reason is GameScript.IncompleteHandRejection)
 
 
 func _state(
