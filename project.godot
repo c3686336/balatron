@@ -19,6 +19,24 @@ config/icon="res://icon.svg"
 window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
 
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/gdUnit4/plugin.cfg", "res://addons/gdunit4_coverage/plugin.cfg")
+
+[gdunit4]
+
+settings/test/test_discovery=true
+hooks/session_hooks=Dictionary[String, bool]({
+"res://addons/gdunit4_coverage/GdUnitCoverageTestSessionHook.gd": true
+})
+
+[gdunit4_coverage]
+
+export/lcov_path="res://coverage/coverage.lcov"
+filter/include_paths=PackedStringArray("res://src/")
+filter/exclude_paths=PackedStringArray("res://test/", "res://addons/")
+runner/gdcov_path="/home/yuchan/Projects/balatron/bin/gdcov-4.7-stable"
+
 [physics]
 
 3d/physics_engine="Jolt Physics"

@@ -9,9 +9,9 @@ func _init() -> void:
 
 
 func _run() -> void:
-	var seed := _read_seed()
-	var state: GameScript.State = GameScript.new_game(seed)
-	print("Balatron CLI (seed %d)" % seed)
+	var game_seed := _read_seed()
+	var state: GameScript.State = GameScript.new_game(game_seed)
+	print("Balatron CLI (seed %d)" % game_seed)
 	print("Commands: d INDEX, t, h, q")
 
 	while state.phase == GameScript.Phase.PLAYING:

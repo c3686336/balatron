@@ -1,4 +1,4 @@
-extends GutTest
+extends BalatronTestSuite
 
 const HandScript := preload("res://src/backend/hand.gd")
 

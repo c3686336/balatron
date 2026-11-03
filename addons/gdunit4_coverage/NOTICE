@@ -1,0 +1,7 @@
+This directory contains two differently licensed parts:
+
+- GDScript source (*.gd), plugin.cfg, gdunit4_coverage.gdextension:
+  licensed under the MIT License - see LICENSE.
+- Compiled native extension binaries (bin/*.dll, bin/*.so):
+  proprietary, all rights reserved. Provided for use with this
+  plugin only; source is not distributed.

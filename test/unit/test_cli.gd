@@ -1,4 +1,4 @@
-extends GutTest
+extends BalatronTestSuite
 
 const CliScript := preload("res://src/cli.gd")
 const GameScript := preload("res://src/backend/game.gd")
