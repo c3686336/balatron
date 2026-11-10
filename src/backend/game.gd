@@ -240,8 +240,8 @@ static func _winning_tile_counts(state: State) -> PackedInt32Array:
 	var counts := PackedInt32Array()
 	counts.resize(9)
 	for tile: Tile in state.concealed_hand.tiles:
-		counts[tile.value - 1] += 1
-	counts[state.drawn_tile.value - 1] += 1
+		counts[Tile.value_to_index(tile.value)] += 1
+	counts[Tile.value_to_index(state.drawn_tile.value)] += 1
 	return counts
 
 

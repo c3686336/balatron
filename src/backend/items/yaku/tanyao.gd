@@ -6,4 +6,4 @@ func _init() -> void:
 
 
 func matches(tile_counts: PackedInt32Array, _decomposition: HandScript.Decomposition) -> bool:
-	return tile_counts[0] == 0 and tile_counts[8] == 0
+	return tile_counts[Tile.value_to_index(1)] == 0 and tile_counts[Tile.value_to_index(9)] == 0

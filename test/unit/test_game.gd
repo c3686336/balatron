@@ -11,10 +11,10 @@ func test_new_game_uses_every_tile_without_a_set_aside_wall() -> void:
 	var counts := PackedInt32Array()
 	counts.resize(9)
 	for tile: Tile in state.concealed_hand.tiles:
-		counts[tile.value - 1] += 1
-	counts[state.drawn_tile.value - 1] += 1
+		counts[Tile.value_to_index(tile.value)] += 1
+	counts[Tile.value_to_index(state.drawn_tile.value)] += 1
 	for tile: Tile in state.draw_pile.tiles:
-		counts[tile.value - 1] += 1
+		counts[Tile.value_to_index(tile.value)] += 1
 
 	assert_eq(state.concealed_hand.size(), 13)
 	assert_eq(state.draw_pile.size(), 22)
@@ -456,6 +456,6 @@ func _tile_inventory(state: GameScript.State) -> PackedInt32Array:
 	var decks: Array[Deck] = [state.concealed_hand, state.draw_pile, state.discards]
 	for deck: Deck in decks:
 		for tile: Tile in deck.tiles:
-			counts[tile.value - 1] += 1
-	counts[state.drawn_tile.value - 1] += 1
+			counts[Tile.value_to_index(tile.value)] += 1
+	counts[Tile.value_to_index(state.drawn_tile.value)] += 1
 	return counts

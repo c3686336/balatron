@@ -47,7 +47,7 @@ static func evaluate(
 	if eligible_decompositions.is_empty():
 		return null
 
-	var bonus := BonusRankContribution.new(bonus_rank, tile_counts[bonus_rank - 1])
+	var bonus := BonusRankContribution.new(bonus_rank, tile_counts[Tile.value_to_index(bonus_rank)])
 	if equipped_items.is_empty():
 		return Result.new(eligible_decompositions[0], bonus, [])
 
