@@ -2,15 +2,11 @@ class_name ItemCatalog
 extends RefCounted
 
 const HandScript := preload("res://src/backend/hand.gd")
+const ItemScript := preload("res://src/backend/items/item.gd")
+const YakuItemScript := preload("res://src/backend/items/yaku_item.gd")
 
-# Stable IDs and read-only metadata; no per-owned-item runtime state.
-const DEFINITIONS := {
-	"tanyao": ["Tanyao", "No rank 1 or 9 tiles (+1 han).", 1],
-	"iipeikou": ["Iipeikou", "At least one duplicated sequence in a normal interpretation (+1 han).", 1],
-	"chiitoitsu": ["Chiitoitsu", "Seven distinct pairs (+2 han).", 2],
-	"toitoi": ["Toitoi", "Four concealed triplets (+2 han).", 2],
-	"sanankou": ["Sanankou", "At least three concealed triplets (+2 han).", 2],
-}
+# Shared definitions contain metadata and matching behavior, not owned runtime state.
+static var _definitions: Dictionary[String, ItemScript] = _build_definitions()
 
 
 class Contribution extends RefCounted:
@@ -22,26 +18,38 @@ class Contribution extends RefCounted:
 		han = p_han
 
 
+static func _build_definitions() -> Dictionary[String, ItemScript]:
+	var items: Array[ItemScript] = [
+		preload("res://src/backend/items/yaku/tanyao.gd").new(),
+		preload("res://src/backend/items/yaku/iipeikou.gd").new(),
+		preload("res://src/backend/items/yaku/chiitoitsu.gd").new(),
+		preload("res://src/backend/items/yaku/toitoi.gd").new(),
+		preload("res://src/backend/items/yaku/sanankou.gd").new(),
+	]
+	var definitions: Dictionary[String, ItemScript] = {}
+	for item: ItemScript in items:
+		definitions[item.id] = item
+	return definitions
 
 
 static func ids() -> Array[String]:
 	var result: Array[String] = []
-	result.assign(DEFINITIONS.keys())
+	result.assign(_definitions.keys())
 	return result
 
 
 static func name_for(item_id: String) -> String:
-	return DEFINITIONS[item_id][0]
+	return _definitions[item_id].display_name
 
 
 static func description_for(item_id: String) -> String:
-	return DEFINITIONS[item_id][1]
+	return _definitions[item_id].description
 
 
 static func loadout_error(equipped_items: Array[String]) -> String:
 	var seen: Dictionary[String, bool] = {}
 	for item_id: String in equipped_items:
-		if not DEFINITIONS.has(item_id):
+		if not _definitions.has(item_id):
 			return "Unknown item ID: %s" % item_id
 		if seen.has(item_id):
 			return "Duplicate item ID: %s" % item_id
@@ -57,33 +65,13 @@ static func contributions_for(
 	equipped_items: Array[String],
 ) -> Array[Contribution]:
 	var contributions: Array[Contribution] = []
-	# Visit catalog IDs, not inventory entries: duplicate IDs cannot stack.
-	for item_id: String in DEFINITIONS:
-		if item_id in equipped_items and _matches(item_id, tile_counts, decomposition):
-			contributions.append(Contribution.new(item_id, DEFINITIONS[item_id][2]))
+	# Visit definitions, not inventory entries: duplicate IDs cannot stack.
+	for item_id: String in _definitions:
+		if item_id not in equipped_items:
+			continue
+		var definition := _definitions[item_id]
+		if definition is YakuItemScript:
+			var yaku := definition as YakuItemScript
+			if yaku.matches(tile_counts, decomposition):
+				contributions.append(Contribution.new(yaku.id, yaku.han))
 	return contributions
-
-
-static func _matches(
-	item_id: String,
-	tile_counts: PackedInt32Array,
-	decomposition: HandScript.Decomposition,
-) -> bool:
-	if item_id == "tanyao":
-		return tile_counts[0] == 0 and tile_counts[8] == 0
-	if item_id == "chiitoitsu":
-		return decomposition is HandScript.SevenPairsDecomposition
-	if not decomposition is HandScript.NormalDecomposition:
-		return false
-	var normal := decomposition as HandScript.NormalDecomposition
-	match item_id:
-		"iipeikou":
-			for index: int in range(normal.sequences.size()):
-				for other: int in range(index + 1, normal.sequences.size()):
-					if normal.sequences[index].first_tile == normal.sequences[other].first_tile:
-						return true
-		"toitoi":
-			return normal.triplets.size() == 4
-		"sanankou":
-			return normal.triplets.size() >= 3
-	return false

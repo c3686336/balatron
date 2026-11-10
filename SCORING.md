@@ -1,6 +1,6 @@
 # Scoring
 
-`src/backend/scoring.gd` owns pure score evaluation and candidate selection. `ItemCatalog` matches passive item conditions; game state changes remain in `Game.update()`.
+`src/backend/scoring.gd` owns pure score evaluation and candidate selection. `ItemCatalog` dispatches passive matching to registered `YakuItem.matches()` implementations; game state changes remain in `Game.update()`.
 
 ## Evaluation
 
@@ -21,7 +21,7 @@ A result contains:
 
 Each candidate is evaluated independently. The highest total han wins, which also maximizes the current exponential score. Incompatible interpretations never pool their item rewards. With no equipped items all interpretations score equally, so the evaluator uses one eligible interpretation without repeatedly calculating the same score.
 
-`ItemCatalog.contributions_for(counts, decomposition, equipped_items)` matches one candidate. It does not select candidates or calculate final points. There is no competing item-specific score result or second scoring path.
+`ItemCatalog.contributions_for(counts, decomposition, equipped_items)` matches one candidate through the concrete yaku classes. It does not select candidates or calculate final points. There is no central per-item switch, competing item-specific score result, or second scoring path.
 
 Evaluation changes no input, state, inventory, or random generator. Returned objects and their shared decomposition are read-only by convention. Independent evaluations have independent result and contribution objects.
 
