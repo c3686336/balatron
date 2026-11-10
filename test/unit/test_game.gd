@@ -2,6 +2,8 @@ extends GutTest
 
 const ActionScript := preload("res://src/backend/action.gd")
 const GameScript := preload("res://src/backend/game.gd")
+const ItemCatalogScript := preload("res://src/backend/item_catalog.gd")
+const ScoringScript := preload("res://src/backend/scoring.gd")
 
 
 func test_new_game_uses_every_tile_without_a_set_aside_wall() -> void:
@@ -23,7 +25,7 @@ func test_new_game_uses_every_tile_without_a_set_aside_wall() -> void:
 
 func test_new_game_is_deterministic_for_a_seed() -> void:
 	var first: GameScript.State = GameScript.new_game(2468)
-	var second: GameScript.State = GameScript.new_game(2468)
+	var second: GameScript.State = GameScript.new_game(2468, ["tanyao"])
 
 	assert_eq(first.bonus_tile, second.bonus_tile)
 	assert_eq(first.concealed_hand.values(), second.concealed_hand.values())
@@ -291,11 +293,142 @@ func test_invalid_tsumo_is_rejected_without_changing_state() -> void:
 	assert_true(rejection.reason is GameScript.IncompleteHandRejection)
 
 
+func test_yaku_only_pay_when_equipped_and_still_add_bonus_han() -> void:
+	var unequipped := _state("2223334445678", 8, "", 8)
+	var equipped := _state("2223334445678", 8, "", 8, ["tanyao"])
+	var stock_win := _win(unequipped)
+	var item_win := _win(equipped)
+
+	assert_eq(stock_win.han, 2)
+	assert_eq(stock_win.points, 4)
+	assert_true(stock_win.item_contributions.is_empty())
+	assert_eq(item_win.bonus_rank_contribution.han, 2)
+	assert_eq(item_win.han, 3)
+	assert_eq(item_win.points, 8)
+	assert_eq(_contribution_ids(item_win), ["tanyao"])
+	assert_eq(item_win.item_contributions[0].han, 1)
+	assert_eq(equipped.han, 0, "Evaluation must not alter the input state")
+
+
+func test_tanyao_excludes_a_terminal_in_the_drawn_position() -> void:
+	var one := _win(_state("2233445556678", 1, "", 9, ["tanyao"]))
+	var nine := _win(_state("2223344556778", 9, "", 1, ["tanyao"]))
+
+	assert_true(one.item_contributions.is_empty())
+	assert_true(nine.item_contributions.is_empty())
+
+
+func test_iipeikou_pays_once_even_with_two_duplicated_sequences() -> void:
+	var positive := _win(_state("2233445566778", 8, "", 9, ["iipeikou"]))
+	var negative := _win(_state("1112344567899", 9, "", 2, ["iipeikou"]))
+
+	assert_eq(positive.han, 1)
+	assert_eq(_contribution_ids(positive), ["iipeikou"])
+	assert_true(positive.selected_decomposition is Hand.NormalDecomposition)
+	assert_true(negative.item_contributions.is_empty())
+
+
+func test_normal_and_seven_pairs_candidates_do_not_pool_items() -> void:
+	var win := _win(_state("1122334455667", 7, "", 9, ["iipeikou", "chiitoitsu"]))
+
+	assert_eq(win.han, 2)
+	assert_eq(win.points, 4)
+	assert_true(win.selected_decomposition is Hand.SevenPairsDecomposition)
+	assert_eq(_contribution_ids(win), ["chiitoitsu"])
+	assert_eq(win.item_contributions[0].han, 2)
+
+
+func test_chiitoitsu_requires_distinct_pairs_not_two_pairs_from_four_tiles() -> void:
+	var win := _win(_state("1111223344556", 6, "", 9, ["chiitoitsu"]))
+
+	assert_true(win.selected_decomposition is Hand.NormalDecomposition)
+	assert_true(win.item_contributions.is_empty())
+	assert_eq(win.han, 0)
+
+
+func test_triplet_sequence_ambiguity_selects_the_whole_best_interpretation() -> void:
+	var win := _win(_state(
+		"1112223334445", 5, "", 9, ["iipeikou", "toitoi", "sanankou"],
+	))
+
+	assert_eq(win.han, 4, "Four concealed triplets pay both Toitoi and Sanankou, not Iipeikou")
+	assert_eq(win.points, 16)
+	assert_eq(_contribution_ids(win), ["sanankou", "toitoi"])
+	var normal := win.selected_decomposition as Hand.NormalDecomposition
+	assert_not_null(normal)
+	assert_eq(normal.triplets.size(), 4)
+	assert_true(normal.sequences.is_empty())
+
+
+func test_sanankou_counts_three_concealed_triplets_but_toitoi_requires_four() -> void:
+	var three := _win(_state("2224446663458", 8, "", 9, ["toitoi", "sanankou"]))
+	var two := _win(_state("1112223456789", 9, "", 9, ["toitoi", "sanankou"]))
+
+	assert_eq(three.han, 2)
+	assert_eq(_contribution_ids(three), ["sanankou"])
+	assert_true(two.item_contributions.is_empty())
+
+
+func test_item_preview_is_repeatable_and_does_not_change_candidates_or_inventory() -> void:
+	var counts := PackedInt32Array([0, 2, 2, 2, 2, 2, 2, 2, 0])
+	var candidates := Hand.decompose(counts)
+	var candidate_count := candidates.size()
+	var loadout: Array[String] = ["iipeikou", "iipeikou"]
+	var first := ScoringScript.evaluate(counts, 9, candidates, loadout)
+	var second := ScoringScript.evaluate(counts, 9, candidates, loadout)
+
+	assert_eq(first.han, 1, "Repeated inventory entries cannot stack the same item")
+	assert_eq(second.han, first.han)
+	assert_eq(first.item_contributions.size(), 1)
+	assert_eq(counts, PackedInt32Array([0, 2, 2, 2, 2, 2, 2, 2, 0]))
+	assert_eq(loadout, ["iipeikou", "iipeikou"])
+	assert_eq(candidates.size(), candidate_count)
+	var normal := first.selected_decomposition as Hand.NormalDecomposition
+	assert_eq(normal.sequences.size(), 4)
+	assert_true(normal.triplets.is_empty())
+
+
+func test_loadout_arrays_are_independent_after_dealing_copy_discard_and_rejection() -> void:
+	var loadout: Array[String] = ["tanyao"]
+	var state: GameScript.State = GameScript.new_game(12345, loadout)
+	loadout.clear()
+	assert_eq(state.equipped_items, ["tanyao"])
+	var copied := state.copy()
+	var discarded := GameScript.update(state, ActionScript.Discard.new(13))
+	var rejected := GameScript.update(state, ActionScript.Discard.new(14))
+	var snapshots: Array[GameScript.State] = [copied, discarded.state, rejected.state]
+	for snapshot: GameScript.State in snapshots:
+		assert_eq(snapshot.equipped_items, ["tanyao"])
+		snapshot.equipped_items.clear()
+		assert_eq(state.equipped_items, ["tanyao"])
+
+
+func test_invalid_starting_loadouts_are_not_dealt() -> void:
+	assert_null(GameScript.new_game(12345, ["not-an-item"]))
+	assert_null(GameScript.new_game(12345, ["tanyao", "tanyao"]))
+
+
+func _win(state: GameScript.State) -> ScoringScript.Result:
+	var result := GameScript.update(state, ActionScript.DeclareTsumo.new())
+	assert_eq(result.state.phase, GameScript.Phase.WON)
+	assert_true(result.events[0] is GameScript.TsumoDeclared)
+	return (result.events[0] as GameScript.TsumoDeclared).scoring
+
+
+func _contribution_ids(win: ScoringScript.Result) -> Array[String]:
+	var result: Array[String] = []
+	for contribution: ItemCatalogScript.Contribution in win.item_contributions:
+		result.append(contribution.item_id)
+	result.sort()
+	return result
+
+
 func _state(
 	concealed: String,
 	drawn: int,
 	pile: String,
 	bonus: int,
+	equipped_items: Array[String] = [],
 ) -> GameScript.State:
 	return GameScript.State.new(
 		GameScript.Phase.PLAYING,
@@ -304,6 +437,9 @@ func _state(
 		_deck(pile),
 		Deck.new(),
 		bonus,
+		0,
+		0,
+		equipped_items,
 	)
 
 

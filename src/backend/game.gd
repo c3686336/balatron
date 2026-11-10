@@ -4,6 +4,7 @@ extends RefCounted
 const ActionScript := preload("res://src/backend/action.gd")
 const HandScript := preload("res://src/backend/hand.gd")
 const ScoringScript := preload("res://src/backend/scoring.gd")
+const ItemCatalogScript := preload("res://src/backend/item_catalog.gd")
 
 enum Phase {
 	PLAYING,
@@ -21,6 +22,7 @@ class State extends RefCounted:
 	var bonus_tile: int
 	var han: int
 	var score: int
+	var equipped_items: Array[String]
 
 	func _init(
 		p_phase: Phase,
@@ -31,6 +33,7 @@ class State extends RefCounted:
 		p_bonus_tile: int,
 		p_han: int = 0,
 		p_score: int = 0,
+		p_equipped_items: Array[String] = [],
 	) -> void:
 		assert(p_bonus_tile >= 1 and p_bonus_tile <= 9, "Bonus tile must be between 1 and 9")
 		phase = p_phase
@@ -41,6 +44,7 @@ class State extends RefCounted:
 		bonus_tile = p_bonus_tile
 		han = p_han
 		score = p_score
+		equipped_items = p_equipped_items.duplicate()
 
 	func copy() -> State:
 		return State.new(
@@ -52,6 +56,7 @@ class State extends RefCounted:
 			bonus_tile,
 			han,
 			score,
+			equipped_items,
 		)
 
 
@@ -141,7 +146,9 @@ class UpdateResult extends RefCounted:
 		events = p_events
 
 
-static func new_game(seed: int) -> State:
+static func new_game(seed: int, equipped_items: Array[String] = []) -> State:
+	if not ItemCatalogScript.loadout_error(equipped_items).is_empty():
+		return null
 	var rng := RandomNumberGenerator.new()
 	rng.seed = seed
 	var bonus_tile := rng.randi_range(1, 9)
@@ -161,6 +168,9 @@ static func new_game(seed: int) -> State:
 		Deck.new(draw_tiles),
 		Deck.new(),
 		bonus_tile,
+		0,
+		0,
+		equipped_items,
 	)
 
 
@@ -209,7 +219,9 @@ static func _discard(state: State, action: ActionScript.Discard) -> UpdateResult
 static func _declare_tsumo(state: State) -> UpdateResult:
 	var tile_counts := _winning_tile_counts(state)
 	var decompositions := HandScript.decompose(tile_counts)
-	var scoring := ScoringScript.evaluate(tile_counts, state.bonus_tile, decompositions)
+	var scoring := ScoringScript.evaluate(
+		tile_counts, state.bonus_tile, decompositions, state.equipped_items,
+	)
 	if scoring == null:
 		return _rejected(state, IncompleteHandRejection.new())
 
