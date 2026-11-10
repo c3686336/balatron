@@ -3,6 +3,7 @@ extends RefCounted
 
 const ActionScript := preload("res://src/backend/action.gd")
 const HandScript := preload("res://src/backend/hand.gd")
+const ScoringScript := preload("res://src/backend/scoring.gd")
 
 enum Phase {
 	PLAYING,
@@ -76,17 +77,14 @@ class TileDrawn extends Event:
 
 class TsumoDeclared extends Event:
 	var decompositions: Array[HandScript.Decomposition]
-	var han: int
-	var score: int
+	var scoring: ScoringScript.Result
 
 	func _init(
 		p_decompositions: Array[HandScript.Decomposition],
-		p_han: int,
-		p_score: int,
+		p_scoring: ScoringScript.Result,
 	) -> void:
 		decompositions = p_decompositions
-		han = p_han
-		score = p_score
+		scoring = p_scoring
 
 
 class Rejection extends RefCounted:
@@ -211,16 +209,17 @@ static func _discard(state: State, action: ActionScript.Discard) -> UpdateResult
 static func _declare_tsumo(state: State) -> UpdateResult:
 	var tile_counts := _winning_tile_counts(state)
 	var decompositions := HandScript.decompose(tile_counts)
-	if decompositions.is_empty():
+	var scoring := ScoringScript.evaluate(tile_counts, state.bonus_tile, decompositions)
+	if scoring == null:
 		return _rejected(state, IncompleteHandRejection.new())
 
 	var next_state := state.copy()
 	next_state.phase = Phase.WON
-	next_state.han = tile_counts[state.bonus_tile - 1]
-	next_state.score = 1 << next_state.han
+	next_state.han = scoring.han
+	next_state.score = scoring.points
 
 	var events: Array[Event] = [
-		TsumoDeclared.new(decompositions, next_state.han, next_state.score),
+		TsumoDeclared.new(decompositions, scoring),
 	]
 	return UpdateResult.new(next_state, events)
 

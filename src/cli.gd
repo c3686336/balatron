@@ -85,6 +85,19 @@ func _print_events(events: Array[GameScript.Event]) -> void:
 			print("Drew %d" % (event as GameScript.TileDrawn).tile.value)
 		elif event is GameScript.WallExhausted:
 			print("No drawable tiles remain")
+		elif event is GameScript.TsumoDeclared:
+			var scoring := (event as GameScript.TsumoDeclared).scoring
+			var bonus := scoring.bonus_rank_contribution
+			print("Bonus rank %d: %d matching tiles = %d han" % [
+				bonus.rank,
+				bonus.han,
+				bonus.han,
+			])
+			print("Total: %d han; 2^%d = %d points" % [
+				scoring.han,
+				scoring.han,
+				scoring.points,
+			])
 
 
 static func rejection_text(reason: GameScript.Rejection) -> String:

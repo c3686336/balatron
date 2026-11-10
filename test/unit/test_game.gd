@@ -203,9 +203,12 @@ func test_valid_tsumo_scores_exact_bonus_rank_as_exponential_han() -> void:
 	assert_eq(result.events.size(), 1)
 	assert_true(result.events[0] is GameScript.TsumoDeclared)
 	var event := result.events[0] as GameScript.TsumoDeclared
-	assert_eq(event.han, 3)
-	assert_eq(event.score, 8)
+	assert_eq(event.scoring.han, 3)
+	assert_eq(event.scoring.points, 8)
 	assert_false(event.decompositions.is_empty())
+	assert_true(event.scoring.selected_decomposition in event.decompositions)
+	assert_eq(event.scoring.bonus_rank_contribution.rank, 1)
+	assert_eq(event.scoring.bonus_rank_contribution.han, 3)
 	assert_eq(state.phase, GameScript.Phase.PLAYING, "The input state remains unchanged")
 	assert_eq(state.han, 0)
 	assert_eq(state.score, 0)
@@ -226,8 +229,14 @@ func test_tsumo_score_handles_zero_and_four_bonus_tiles() -> void:
 
 	assert_eq(zero_result.state.han, 0)
 	assert_eq(zero_result.state.score, 1)
+	var zero_event := zero_result.events[0] as GameScript.TsumoDeclared
+	assert_eq(zero_event.scoring.bonus_rank_contribution.rank, 9)
+	assert_eq(zero_event.scoring.bonus_rank_contribution.han, 0)
 	assert_eq(four_result.state.han, 4)
 	assert_eq(four_result.state.score, 16)
+	var four_event := four_result.events[0] as GameScript.TsumoDeclared
+	assert_eq(four_event.scoring.bonus_rank_contribution.rank, 1)
+	assert_eq(four_event.scoring.bonus_rank_contribution.han, 4)
 
 
 func test_seven_pairs_can_be_declared_as_tsumo() -> void:
@@ -242,6 +251,7 @@ func test_seven_pairs_can_be_declared_as_tsumo() -> void:
 	var event := result.events[0] as GameScript.TsumoDeclared
 	assert_eq(event.decompositions.size(), 1)
 	assert_true(event.decompositions[0] is Hand.SevenPairsDecomposition)
+	assert_true(event.scoring.selected_decomposition is Hand.SevenPairsDecomposition)
 
 
 func test_actions_after_tsumo_are_rejected_without_losing_win_result() -> void:
