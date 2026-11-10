@@ -3,6 +3,8 @@ extends RefCounted
 
 const ActionScript := preload("res://src/backend/action.gd")
 const HandScript := preload("res://src/backend/hand.gd")
+const ScoringScript := preload("res://src/backend/scoring.gd")
+const ItemCatalogScript := preload("res://src/backend/item_catalog.gd")
 
 enum Phase {
 	PLAYING,
@@ -20,6 +22,7 @@ class State extends RefCounted:
 	var bonus_tile: int
 	var han: int
 	var score: int
+	var equipped_items: Array[String]
 
 	func _init(
 		p_phase: Phase,
@@ -30,6 +33,7 @@ class State extends RefCounted:
 		p_bonus_tile: int,
 		p_han: int = 0,
 		p_score: int = 0,
+		p_equipped_items: Array[String] = [],
 	) -> void:
 		assert(p_bonus_tile >= 1 and p_bonus_tile <= 9, "Bonus tile must be between 1 and 9")
 		phase = p_phase
@@ -40,6 +44,7 @@ class State extends RefCounted:
 		bonus_tile = p_bonus_tile
 		han = p_han
 		score = p_score
+		equipped_items = p_equipped_items.duplicate()
 
 	func copy() -> State:
 		return State.new(
@@ -51,6 +56,7 @@ class State extends RefCounted:
 			bonus_tile,
 			han,
 			score,
+			equipped_items,
 		)
 
 
@@ -76,17 +82,14 @@ class TileDrawn extends Event:
 
 class TsumoDeclared extends Event:
 	var decompositions: Array[HandScript.Decomposition]
-	var han: int
-	var score: int
+	var scoring: ScoringScript.Result
 
 	func _init(
 		p_decompositions: Array[HandScript.Decomposition],
-		p_han: int,
-		p_score: int,
+		p_scoring: ScoringScript.Result,
 	) -> void:
 		decompositions = p_decompositions
-		han = p_han
-		score = p_score
+		scoring = p_scoring
 
 
 class Rejection extends RefCounted:
@@ -143,7 +146,9 @@ class UpdateResult extends RefCounted:
 		events = p_events
 
 
-static func new_game(seed: int) -> State:
+static func new_game(seed: int, equipped_items: Array[String] = []) -> State:
+	if not ItemCatalogScript.loadout_error(equipped_items).is_empty():
+		return null
 	var rng := RandomNumberGenerator.new()
 	rng.seed = seed
 	var bonus_tile := rng.randi_range(1, 9)
@@ -163,6 +168,9 @@ static func new_game(seed: int) -> State:
 		Deck.new(draw_tiles),
 		Deck.new(),
 		bonus_tile,
+		0,
+		0,
+		equipped_items,
 	)
 
 
@@ -211,16 +219,19 @@ static func _discard(state: State, action: ActionScript.Discard) -> UpdateResult
 static func _declare_tsumo(state: State) -> UpdateResult:
 	var tile_counts := _winning_tile_counts(state)
 	var decompositions := HandScript.decompose(tile_counts)
-	if decompositions.is_empty():
+	var scoring := ScoringScript.evaluate(
+		tile_counts, state.bonus_tile, decompositions, state.equipped_items,
+	)
+	if scoring == null:
 		return _rejected(state, IncompleteHandRejection.new())
 
 	var next_state := state.copy()
 	next_state.phase = Phase.WON
-	next_state.han = tile_counts[state.bonus_tile - 1]
-	next_state.score = 1 << next_state.han
+	next_state.han = scoring.han
+	next_state.score = scoring.points
 
 	var events: Array[Event] = [
-		TsumoDeclared.new(decompositions, next_state.han, next_state.score),
+		TsumoDeclared.new(decompositions, scoring),
 	]
 	return UpdateResult.new(next_state, events)
 
@@ -229,8 +240,8 @@ static func _winning_tile_counts(state: State) -> PackedInt32Array:
 	var counts := PackedInt32Array()
 	counts.resize(9)
 	for tile: Tile in state.concealed_hand.tiles:
-		counts[tile.value - 1] += 1
-	counts[state.drawn_tile.value - 1] += 1
+		counts[Tile.value_to_index(tile.value)] += 1
+	counts[Tile.value_to_index(state.drawn_tile.value)] += 1
 	return counts
 
 

@@ -186,7 +186,7 @@ func _counts(tiles: String) -> PackedInt32Array:
 	var counts := _empty_counts()
 	for character: String in tiles:
 		var tile := character.to_int()
-		counts[tile - 1] += 1
+		counts[Tile.value_to_index(tile)] += 1
 	return counts
 
 

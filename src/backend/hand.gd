@@ -267,7 +267,7 @@ static func _is_valid_input(
 			return false
 
 	for tile: int in range(1, 10):
-		if tile_counts[tile - 1] > 0 and tile in declared_quads:
+		if tile_counts[Tile.value_to_index(tile)] > 0 and tile in declared_quads:
 			return false
 
 		if declared_quads.count(tile) > 1:
