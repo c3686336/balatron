@@ -23,7 +23,7 @@ static func _build_definitions() -> Dictionary[String, ItemScript]:
 		preload("res://src/backend/items/yaku/tanyao.gd").new(),
 		preload("res://src/backend/items/yaku/iipeikou.gd").new(),
 		preload("res://src/backend/items/yaku/chiitoitsu.gd").new(),
-		preload("res://src/backend/items/yaku/toitoi.gd").new(),
+		preload("res://src/backend/items/yaku/suuanko.gd").new(),
 		preload("res://src/backend/items/yaku/sanankou.gd").new(),
 	]
 	var definitions: Dictionary[String, ItemScript] = {}

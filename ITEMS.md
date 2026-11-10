@@ -13,7 +13,7 @@ godot --headless -s src/cli.gd -- --list-items
 Pass a seed followed by stable item IDs:
 
 ```sh
-godot --headless -s src/cli.gd -- 3 tanyao iipeikou chiitoitsu toitoi sanankou
+godot --headless -s src/cli.gd -- 3 tanyao iipeikou chiitoitsu suuanko sanankou
 ```
 
 The loadout is fixed when the hand is dealt. There are no mid-hand equipment changes, slot limits, purchases, active effects, or run-progression rules. With no item IDs, play and scoring retain their original behavior. Unknown IDs and repeated IDs are rejected before dealing; the CLI exits with status 1.
@@ -23,10 +23,10 @@ The loadout is fixed when the hand is dealt. There are no mid-hand equipment cha
 | `tanyao` | No rank 1 or 9 anywhere in the winning hand, including the drawn tile | 1 |
 | `iipeikou` | At least one pair of identical sequences in a normal decomposition | 1 |
 | `chiitoitsu` | Seven distinct pairs | 2 |
-| `toitoi` | Four triplets | 2 |
+| `suuanko` | Four concealed triplets | 2 |
 | `sanankou` | At least three concealed triplets | 2 |
 
-Every current hand is concealed and wins by tsumo. There is no kan action or exposed-meld system. Toitoi and Sanankou can both pay on a four-triplet interpretation when both items are equipped. Each equipped item pays at most once, including Iipeikou when there are multiple duplicated sequences. Traditional fu, waits, yakuman, and additional automatic yaku are not introduced.
+Every current hand is concealed and wins by tsumo. There is no kan action or exposed-meld system. Suuanko and Sanankou can both pay on a four-triplet interpretation when both items are equipped. Suuanko retains this game's +2 han reward, not traditional yakuman scoring. Each equipped item pays at most once, including Iipeikou when there are multiple duplicated sequences. Traditional fu, waits, yakuman, and additional automatic yaku are not introduced.
 
 ## Scoring
 
@@ -83,7 +83,7 @@ The integrated implementation passed all 44 GUT tests on Godot 4.7.2:
 
 ```sh
 godot --headless -s addons/gut/gut_cmdln.gd -gexit
-printf 't\n' | godot --headless -s src/cli.gd -- 3 tanyao iipeikou chiitoitsu toitoi sanankou
+printf 't\n' | godot --headless -s src/cli.gd -- 3 tanyao iipeikou chiitoitsu suuanko sanankou
 printf 'd 13\nt\n' | godot --headless -s src/cli.gd -- 12345
 ```
 

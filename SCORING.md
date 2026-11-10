@@ -41,7 +41,7 @@ The combined branch passed all 44 GUT tests on Godot 4.7.2:
 
 ```sh
 godot --headless -s addons/gut/gut_cmdln.gd -gexit
-printf 't\n' | godot --headless -s src/cli.gd -- 3 tanyao iipeikou chiitoitsu toitoi sanankou
+printf 't\n' | godot --headless -s src/cli.gd -- 3 tanyao iipeikou chiitoitsu suuanko sanankou
 printf 'd 13\nt\n' | godot --headless -s src/cli.gd -- 12345
 ```
 

@@ -348,21 +348,21 @@ func test_chiitoitsu_requires_distinct_pairs_not_two_pairs_from_four_tiles() -> 
 
 func test_triplet_sequence_ambiguity_selects_the_whole_best_interpretation() -> void:
 	var win := _win(_state(
-		"1112223334445", 5, "", 9, ["iipeikou", "toitoi", "sanankou"],
+		"1112223334445", 5, "", 9, ["iipeikou", "suuanko", "sanankou"],
 	))
 
-	assert_eq(win.han, 4, "Four concealed triplets pay both Toitoi and Sanankou, not Iipeikou")
+	assert_eq(win.han, 4, "Four concealed triplets pay both Suuanko and Sanankou, not Iipeikou")
 	assert_eq(win.points, 16)
-	assert_eq(_contribution_ids(win), ["sanankou", "toitoi"])
+	assert_eq(_contribution_ids(win), ["sanankou", "suuanko"])
 	var normal := win.selected_decomposition as Hand.NormalDecomposition
 	assert_not_null(normal)
 	assert_eq(normal.triplets.size(), 4)
 	assert_true(normal.sequences.is_empty())
 
 
-func test_sanankou_counts_three_concealed_triplets_but_toitoi_requires_four() -> void:
-	var three := _win(_state("2224446663458", 8, "", 9, ["toitoi", "sanankou"]))
-	var two := _win(_state("1112223456789", 9, "", 9, ["toitoi", "sanankou"]))
+func test_sanankou_counts_three_concealed_triplets_but_suuanko_requires_four() -> void:
+	var three := _win(_state("2224446663458", 8, "", 9, ["suuanko", "sanankou"]))
+	var two := _win(_state("1112223456789", 9, "", 9, ["suuanko", "sanankou"]))
 
 	assert_eq(three.han, 2)
 	assert_eq(_contribution_ids(three), ["sanankou"])

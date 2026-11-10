@@ -2,7 +2,7 @@ extends "res://src/backend/items/yaku_item.gd"
 
 
 func _init() -> void:
-	super("toitoi", "Toitoi", "Four concealed triplets (+2 han).", 2)
+	super("suuanko", "Suuanko", "Four concealed triplets (+2 han).", 2)
 
 
 func matches(_tile_counts: PackedInt32Array, decomposition: HandScript.Decomposition) -> bool:
